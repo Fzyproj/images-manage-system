@@ -1,5 +1,6 @@
 from flask import Flask, request, jsonify
 import subprocess
+import json
 
 app = Flask(__name__)
 
@@ -10,10 +11,23 @@ ALIYUN_REPO_PREFIX = "crpi-lsey5sghxxwk05fh.cn-hangzhou.personal.cr.aliyuncs.com
 @app.route("/images", methods=["GET"])
 def list_images():
     try:
-        result = subprocess.check_output(["docker", "images", "--format", "{{json .}}"], text=True)
-        return jsonify({"status": "success", "data": result})
+        # 获取镜像列表，每一行是一个 JSON
+        result = subprocess.check_output(
+            'docker images --format "{{json .}}"',
+            shell=True,
+            encoding="utf-8"
+        )
+        # 每行一个 JSON，逐行解析
+        images = []
+        for line in result.strip().split("\n"):
+            if line:
+                image_info = json.loads(line)
+                images.append(image_info)
+
+        return jsonify({"status": "success", "data": images})
+
     except subprocess.CalledProcessError as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+        return jsonify({"status": "error", "message": str(e)})
 
 
 # 打 tag、push、删除临时 tag
