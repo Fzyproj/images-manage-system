@@ -25,7 +25,7 @@ def list_images():
             if line:
                 image_info = json.loads(line)
                 repo_image = RepoImage(image_info['ID'], image_info['Repository'], image_info['Tag'])
-                images.append(repo_image)
+                images.append(repo_image.to_dict())
 
         return jsonify({"status": "success", "data": images})
 
