@@ -7,7 +7,8 @@ from entity.repo_image import RepoImage
 app = Flask(__name__)
 
 # 配置阿里云仓库地址
-ALIYUN_REPO_PREFIX = "crpi-lsey5sghxxwk05fh.cn-hangzhou.personal.cr.aliyuncs.com/app_ns"
+ALIYUN_REGISTRY = "crpi-lsey5sghxxwk05fh.cn-hangzhou.personal.cr.aliyuncs.com"
+APP_NAMESPACE = "app_ns"
 
 # 查询本地镜像列表
 @app.route("/images", methods=["GET"])
@@ -43,7 +44,7 @@ def push_image():
     if not local_image or not version:
         return jsonify({"status": "error", "message": "缺少 local_image 或 version 参数"}), 400
 
-    aliyun_image = f"{ALIYUN_REPO_PREFIX}/{local_image}:{version}"
+    aliyun_image = f"{ALIYUN_REGISTRY}/{APP_NAMESPACE}/{local_image}:{version}"
 
     try:
         # 打 tag
