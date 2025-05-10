@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 import subprocess
 import json
 
+from entity.repo_image import RepoImage
+
 app = Flask(__name__)
 
 # 配置阿里云仓库地址
@@ -22,7 +24,8 @@ def list_images():
         for line in result.strip().split("\n"):
             if line:
                 image_info = json.loads(line)
-                images.append(image_info)
+                repo_image = RepoImage(image_info['ID'], image_info['Repository'], image_info['Tag'])
+                images.append(repo_image)
 
         return jsonify({"status": "success", "data": images})
 
