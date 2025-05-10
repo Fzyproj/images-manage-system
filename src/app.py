@@ -1,6 +1,7 @@
 from flask import Flask, request, jsonify
 import subprocess
 import json
+import yaml
 
 from entity.repo_image import RepoImage
 
@@ -9,6 +10,53 @@ app = Flask(__name__)
 # 配置阿里云仓库地址
 ALIYUN_REGISTRY = "crpi-lsey5sghxxwk05fh.cn-hangzhou.personal.cr.aliyuncs.com"
 APP_NAMESPACE = "app_ns"
+
+YML_FILE_PATH = "/app/InsuranceApp/docker-compose.yml"
+SERVICE_NAME = "insure-app"
+
+# 查询当前镜像版本
+@app.route("/image/version", methods=["GET"])
+def get_image_version():
+    with open(YML_FILE_PATH, "r") as f:
+        compose_config = yaml.safe_load(f)
+
+    image = compose_config["services"][SERVICE_NAME]["image"]
+    return jsonify({"status": "success", "image": image})
+
+# 修改镜像版本
+@app.route("/container/update", methods=["POST"])
+def update_image_version():
+    new_version = request.json.get("version")
+    repo_name = request.json.get("repo_name")
+    if not new_version:
+        return jsonify({"status": "error", "message": "Missing version"}), 400
+    if not repo_name:
+        return jsonify({"status": "error", "message": "Missing repo name"}), 400
+
+    with open(YML_FILE_PATH, "r") as f:
+        compose_config = yaml.safe_load(f)
+
+    new_image = f"{repo_name}:{new_version}"
+    compose_config["services"][SERVICE_NAME]["image"] = new_image
+
+    with open(YML_FILE_PATH, "w") as f:
+        yaml.dump(compose_config, f, default_flow_style=False)
+
+    # 拉取远端镜像
+    subprocess.check_output(
+        f'docker-compose -f {YML_FILE_PATH} pull',
+        shell=True,
+        encoding="utf-8"
+    )
+
+    # 重建容器
+    subprocess.check_output(
+        f'docker-compose -f {YML_FILE_PATH} up -d',
+        shell=True,
+        encoding="utf-8"
+    )
+
+    return jsonify({"status": "success", "new_image": new_image})
 
 # 查询本地镜像列表
 @app.route("/images", methods=["GET"])
