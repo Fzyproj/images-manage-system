@@ -41,10 +41,12 @@ def push_image():
     local_image = data.get("local_image")
     version = data.get("version")
 
+    re_version = data.get("re_version")
+
     if not local_image or not version:
         return jsonify({"status": "error", "message": "缺少 local_image 或 version 参数"}), 400
 
-    aliyun_image = f"{ALIYUN_REGISTRY}/{APP_NAMESPACE}/{local_image}:{version}"
+    aliyun_image = f"{ALIYUN_REGISTRY}/{APP_NAMESPACE}/{local_image}:{re_version or version}"
 
     try:
         # 打 tag
@@ -61,6 +63,30 @@ def push_image():
     except subprocess.CalledProcessError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+# 拉取镜像
+@app.route("/pull-images", methods=["POST"])
+def pull_images():
+    data = request.get_json()
+    repo_name = data.get("repo_name")
+    tag = data.get("tag")
+
+    rename_repo_name = data.get("rename_repo_name")
+    re_tag = data.get("re_tag")
+
+    remote_repo_addr = f"{ALIYUN_REGISTRY}/{APP_NAMESPACE}/{repo_name}:{tag}"
+
+    try:
+        # 拉取
+        subprocess.check_call(["docker", "pull", remote_repo_addr])
+        # 判断是否重命名或者重新打tag
+        if rename_repo_name or re_tag:
+            # docker重命名
+            subprocess.check_call(["docker", "tag", remote_repo_addr, f"{rename_repo_name}:{re_tag or tag}"])
+            # 删除重命名后的镜像，删除下载镜像。
+            subprocess.check_call(["docker", "rmi", remote_repo_addr])
+    except subprocess.CalledProcessError as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+    return jsonify({"status": "success", "data": f"镜像拉取成功，本地已保存镜像为：{rename_repo_name}:{re_tag or tag}"}), 200
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=6000)
