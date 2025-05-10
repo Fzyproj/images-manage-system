@@ -10,8 +10,7 @@ ALIYUN_REPO_PREFIX = "crpi-lsey5sghxxwk05fh.cn-hangzhou.personal.cr.aliyuncs.com
 @app.route("/images", methods=["GET"])
 def list_images():
     try:
-        print("123123123")
-        result = subprocess.check_output(["docker", "images"], text=True)
+        result = subprocess.check_output(["docker", "images", "--format", "{{json .}}"], text=True)
         return jsonify({"status": "success", "data": result})
     except subprocess.CalledProcessError as e:
         return jsonify({"status": "error", "message": str(e)}), 500
