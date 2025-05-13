@@ -11,6 +11,7 @@ app = Flask(__name__)
 ALIYUN_REGISTRY = "crpi-lsey5sghxxwk05fh.cn-hangzhou.personal.cr.aliyuncs.com"
 APP_NAMESPACE = "app_ns"
 
+# yml的存放路径
 YML_FILE_PATH = "/app/InsuranceApp/docker-compose.yml"
 SERVICE_NAME = "insure-app"
 
@@ -42,7 +43,7 @@ def update_image_version():
     with open(YML_FILE_PATH, "w") as f:
         yaml.dump(compose_config, f, default_flow_style=False)
 
-    # 拉取远端镜像
+    # 拉取远端镜像，校验远端和本地缓存的image id是否相同，如果相同则使用本地缓存的镜像。
     subprocess.check_output(
         f'docker-compose -f {YML_FILE_PATH} pull',
         shell=True,
@@ -55,6 +56,21 @@ def update_image_version():
         shell=True,
         encoding="utf-8"
     )
+
+    # 查看是否存在无头镜像
+    result = subprocess.check_output(
+        "docker images | grep '<none>' | awk '{print $3}'",
+        shell=True,
+        encoding="utf-8"
+    )
+
+    if result:
+        # 存在无头镜像则删除逻辑
+        subprocess.check_output(
+            "docker images | grep '<none>' | awk '{print $3}' | xargs docker rmi -f",
+            shell=True,
+            encoding="utf-8"
+        )
 
     return jsonify({"status": "success", "new_image": new_image})
 
