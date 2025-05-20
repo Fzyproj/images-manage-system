@@ -25,7 +25,7 @@ def get_image_version():
     return jsonify({"status": "success", "image": image})
 
 # 修改镜像版本
-@app.route("/container/update", methods=["POST"])
+@app.route("/ims/container/update", methods=["POST"])
 def update_image_version():
     new_version = request.json.get("version")
     repo_name = request.json.get("repo_name")
@@ -43,36 +43,38 @@ def update_image_version():
     with open(YML_FILE_PATH, "w") as f:
         yaml.dump(compose_config, f, default_flow_style=False)
 
-    # 拉取远端镜像，校验远端和本地缓存的image id是否相同，如果相同则使用本地缓存的镜像。
-    subprocess.check_output(
-        f'docker-compose -f {YML_FILE_PATH} pull',
-        shell=True,
-        encoding="utf-8"
-    )
-
-    # 重建容器
-    subprocess.check_output(
-        f'docker-compose -f {YML_FILE_PATH} up -d',
-        shell=True,
-        encoding="utf-8"
-    )
-
-    # 查看是否存在无头镜像
-    result = subprocess.check_output(
-        "docker images | grep '<none>' | awk '{print $3}'",
-        shell=True,
-        encoding="utf-8"
-    )
-
-    if result:
-        # 存在无头镜像则删除逻辑
+    try:
+        # 拉取远端镜像，校验远端和本地缓存的image id是否相同，如果相同则使用本地缓存的镜像。
         subprocess.check_output(
-            "docker images | grep '<none>' | awk '{print $3}' | xargs docker rmi -f",
+            f'docker-compose -f {YML_FILE_PATH} pull',
             shell=True,
             encoding="utf-8"
         )
 
-    return jsonify({"status": "success", "new_image": new_image})
+        # 重建容器
+        subprocess.check_output(
+            f'docker-compose -f {YML_FILE_PATH} up -d',
+            shell=True,
+            encoding="utf-8"
+        )
+
+        # 查看是否存在无头镜像
+        result = subprocess.check_output(
+            "docker images | grep '<none>' | awk '{print $3}'",
+            shell=True,
+            encoding="utf-8"
+        )
+
+        if result:
+            # 存在无头镜像则删除逻辑
+            subprocess.check_output(
+                "docker images | grep '<none>' | awk '{print $3}' | xargs docker rmi -f",
+                shell=True,
+                encoding="utf-8"
+            )
+    except subprocess.CalledProcessError as e:
+        return jsonify({"code": 500, "data": None, "msg": str(e)})
+    return jsonify({"data": None, "code": 200, "msg": new_image})
 
 # 查询本地镜像列表
 @app.route("/images", methods=["GET"])
